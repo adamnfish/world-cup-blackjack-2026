@@ -1,0 +1,203 @@
+import { useEffect, useMemo, useState } from "react";
+import { aggregateGoals, SPREADSHEET_TEAMS, type TeamStats } from "./data";
+
+type OutputMode = "gf" | "gd";
+
+const LS_TOKEN = "wc26_api_token";
+const LS_PROXY = "wc26_proxy_url";
+
+const emptyStats = (): TeamStats[] =>
+  SPREADSHEET_TEAMS.map((name) => ({
+    name,
+    apiName: null,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    matchesPlayed: 0,
+  }));
+
+export function App() {
+  const [apiToken, setApiToken] = useState(
+    () => localStorage.getItem(LS_TOKEN) ?? ""
+  );
+  const [proxyUrl, setProxyUrl] = useState(
+    () =>
+      localStorage.getItem(LS_PROXY) ??
+      (import.meta.env.VITE_PROXY_URL as string | undefined) ??
+      ""
+  );
+  const [stats, setStats] = useState<TeamStats[]>(emptyStats);
+  const [mode, setMode] = useState<OutputMode>("gf");
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<{
+    kind: "info" | "error" | "success";
+    text: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => localStorage.setItem(LS_TOKEN, apiToken), [apiToken]);
+  useEffect(() => localStorage.setItem(LS_PROXY, proxyUrl), [proxyUrl]);
+
+  const value = (t: TeamStats) =>
+    mode === "gd" ? t.goalsFor - t.goalsAgainst : t.goalsFor;
+
+  const tsvRow = useMemo(
+    () => stats.map((t) => value(t).toString()).join("\t"),
+    [stats, mode]
+  );
+
+  const loaded = stats.some((t) => t.matchesPlayed > 0);
+
+  async function loadStats() {
+    if (!apiToken.trim()) {
+      setStatus({ kind: "error", text: "Paste your football-data.org API token first." });
+      return;
+    }
+    if (!proxyUrl.trim()) {
+      setStatus({
+        kind: "error",
+        text: "Set your proxy URL first (see the README for the Cloudflare Worker setup).",
+      });
+      return;
+    }
+
+    setLoading(true);
+    setStatus({ kind: "info", text: "Loading match data…" });
+    try {
+      const base = proxyUrl.trim().replace(/\/+$/, "");
+      const res = await fetch(`${base}/v4/competitions/WC/matches`, {
+        headers: { "X-Auth-Token": apiToken.trim() },
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Feed returned ${res.status}. ${body.slice(0, 200)}`);
+      }
+      const data = await res.json();
+      if (!data || !Array.isArray(data.matches)) {
+        throw new Error("Response did not contain a 'matches' array.");
+      }
+      const aggregated = aggregateGoals(data.matches);
+      setStats(aggregated);
+
+      const unmatched = aggregated.filter((t) => !t.apiName).map((t) => t.name);
+      if (unmatched.length) {
+        setStatus({
+          kind: "error",
+          text: `Loaded, but couldn't match: ${unmatched.join(", ")}. Check these manually.`,
+        });
+      } else {
+        const played = aggregated.reduce((n, t) => n + t.matchesPlayed, 0) / 2;
+        setStatus({ kind: "success", text: `Loaded stats from ${played} matches.` });
+      }
+    } catch (err) {
+      setStatus({
+        kind: "error",
+        text: `Failed to load: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copyRow() {
+    try {
+      await navigator.clipboard.writeText(tsvRow);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setStatus({ kind: "error", text: "Clipboard blocked — select the row and copy manually." });
+    }
+  }
+
+  return (
+    <div className="app">
+      <header className="bar">
+        <h1>
+          World Cup 2026 <span>Blackjack Stats</span>
+        </h1>
+        <div className="controls">
+          <input
+            type="password"
+            placeholder="football-data.org API token"
+            value={apiToken}
+            onChange={(e) => setApiToken(e.target.value)}
+            autoComplete="off"
+          />
+          <input
+            type="text"
+            placeholder="Proxy URL (your Worker)"
+            value={proxyUrl}
+            onChange={(e) => setProxyUrl(e.target.value)}
+            autoComplete="off"
+          />
+          <button className="primary" onClick={loadStats} disabled={loading}>
+            {loading ? "Loading…" : "Load stats"}
+          </button>
+        </div>
+      </header>
+
+      {status && <div className={`status ${status.kind}`}>{status.text}</div>}
+
+      <section className="output">
+        <div className="output-head">
+          <div className="toggle">
+            <button
+              className={mode === "gf" ? "on" : ""}
+              onClick={() => setMode("gf")}
+            >
+              Goals For
+            </button>
+            <button
+              className={mode === "gd" ? "on" : ""}
+              onClick={() => setMode("gd")}
+            >
+              Goal Difference
+            </button>
+          </div>
+          <button className="copy" onClick={copyRow}>
+            {copied ? "Copied!" : `Copy ${mode === "gf" ? "GF" : "GD"} row`}
+          </button>
+        </div>
+        <pre className="tsv" title="Click to select, then copy">
+          {tsvRow}
+        </pre>
+        <p className="hint">
+          Tab-separated, 48 values in spreadsheet order. Paste straight into the row.
+        </p>
+      </section>
+
+      <main className="grid">
+        {stats.map((t, i) => {
+          const gd = t.goalsFor - t.goalsAgainst;
+          const active = mode === "gf" ? "gf" : "gd";
+          return (
+            <div
+              key={t.name}
+              className={`cell ${!t.apiName && loaded ? "unmatched" : ""}`}
+            >
+              <div className="cell-head">
+                <span className="idx">{(i + 2).toString().padStart(2, "0")}</span>
+                <span className="team" title={t.apiName ?? "no API match"}>
+                  {t.name}
+                </span>
+              </div>
+              <div className="nums">
+                <span className={active === "gf" ? "num hot" : "num"}>
+                  <em>GF</em>
+                  {t.goalsFor}
+                </span>
+                <span className="num">
+                  <em>GA</em>
+                  {t.goalsAgainst}
+                </span>
+                <span className={active === "gd" ? "num hot" : "num"}>
+                  <em>GD</em>
+                  {gd > 0 ? `+${gd}` : gd}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </main>
+    </div>
+  );
+}

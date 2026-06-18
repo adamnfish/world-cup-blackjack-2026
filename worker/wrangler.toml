@@ -1,0 +1,5 @@
+# Cloudflare Worker config for the football-data.org CORS proxy.
+# See ../README.md for one-time setup and deploy instructions.
+name = "wc-blackjack-proxy"
+main = "worker.js"
+compatibility_date = "2024-11-01"
