@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { aggregateGoals, SPREADSHEET_TEAMS, type TeamStats } from "./data";
+import {
+  aggregateGoals,
+  SPREADSHEET_TEAMS,
+  TEAM_FLAGS,
+  type TeamStats,
+} from "./data";
 
 type OutputMode = "gf" | "gd";
 
@@ -109,7 +114,9 @@ export function App() {
   }
 
   return (
-    <div className="app">
+    <>
+      <div className="brandstrip" aria-hidden="true" />
+      <div className="app">
       <header className="bar">
         <h1>
           World Cup 2026 <span>Blackjack Stats</span>
@@ -168,20 +175,23 @@ export function App() {
       <main className="grid">
         {stats.map((t, i) => {
           const gd = t.goalsFor - t.goalsAgainst;
-          const active = mode === "gf" ? "gf" : "gd";
+          const sign = gd > 0 ? "pos" : gd < 0 ? "neg" : "";
           return (
             <div
               key={t.name}
               className={`cell ${!t.apiName && loaded ? "unmatched" : ""}`}
             >
               <div className="cell-head">
-                <span className="idx">{(i + 2).toString().padStart(2, "0")}</span>
+                <span className="flag" aria-hidden="true">
+                  {TEAM_FLAGS[t.name] ?? ""}
+                </span>
                 <span className="team" title={t.apiName ?? "no API match"}>
                   {t.name}
                 </span>
+                <span className="idx">{(i + 2).toString().padStart(2, "0")}</span>
               </div>
               <div className="nums">
-                <span className={active === "gf" ? "num hot" : "num"}>
+                <span className={`num ${mode === "gf" ? "hot" : ""}`}>
                   <em>GF</em>
                   {t.goalsFor}
                 </span>
@@ -189,7 +199,9 @@ export function App() {
                   <em>GA</em>
                   {t.goalsAgainst}
                 </span>
-                <span className={active === "gd" ? "num hot" : "num"}>
+                <span
+                  className={`num gd ${sign} ${mode === "gd" ? "hot" : ""}`}
+                >
                   <em>GD</em>
                   {gd > 0 ? `+${gd}` : gd}
                 </span>
@@ -198,6 +210,7 @@ export function App() {
           );
         })}
       </main>
-    </div>
+      </div>
+    </>
   );
 }

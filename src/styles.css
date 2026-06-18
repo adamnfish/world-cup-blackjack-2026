@@ -1,13 +1,26 @@
 :root {
-  --bg: #0f172a;
-  --panel: #1e293b;
-  --panel-2: #0b1220;
-  --line: #334155;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --accent: #6366f1;
-  --good: #34d399;
-  --bad: #fb7185;
+  /* FIFA World Cup 2026 palette */
+  --navy: #203180;
+  --royal: #295aff;
+  --purple: #6a15ff;
+  --lavender: #ae8bf4;
+  --green: #00b140;
+  --green-dark: #07513e;
+  --red: #e60000;
+  --pink: #ee2560;
+  --orange: #ff4c00;
+  --aqua: #5cf9d6;
+  --lime: #a7e900;
+
+  /* Derived neutrals, all tinted toward navy for a single cohesive family */
+  --ink: #1a2150; /* primary text */
+  --muted: #767ca6; /* secondary text */
+  --bg: #f2f3fb; /* page background */
+  --surface: #ffffff; /* cards / header */
+  --line: #e1e3f2; /* hairline borders */
+
+  --radius: 10px;
+  --radius-sm: 8px;
 }
 
 * {
@@ -16,15 +29,32 @@
 
 body {
   margin: 0;
-  background: #f1f5f9;
-  color: #0f172a;
-  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 .app {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 0 16px 28px;
+}
+
+/* Thin multi-colour brand accent across the full width of the page */
+.brandstrip {
+  height: 4px;
+  width: 100%;
+  margin: 0 0 16px;
+  background: linear-gradient(
+    90deg,
+    var(--royal),
+    var(--purple),
+    var(--pink),
+    var(--orange),
+    var(--lime),
+    var(--aqua)
+  );
 }
 
 /* Header / controls */
@@ -34,18 +64,19 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .bar h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 800;
   letter-spacing: -0.02em;
+  color: var(--navy);
 }
 
 .bar h1 span {
-  color: var(--accent);
+  color: inherit;
 }
 
 .controls {
@@ -55,18 +86,25 @@ body {
 }
 
 .controls input {
-  padding: 8px 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
   font: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   min-width: 220px;
 }
 
+.controls input::placeholder {
+  color: var(--muted);
+}
+
 .controls input:focus {
-  outline: 2px solid var(--accent);
-  border-color: var(--accent);
+  outline: none;
+  border-color: var(--royal);
+  box-shadow: 0 0 0 3px rgba(41, 90, 255, 0.18);
 }
 
 button {
@@ -74,51 +112,63 @@ button {
   font-weight: 700;
   cursor: pointer;
   border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  padding: 9px 16px;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 
 button.primary {
-  background: var(--accent);
+  background: var(--royal);
   color: #fff;
 }
 
+button.primary:hover {
+  background: #1746e6;
+}
+
 button.primary:disabled {
-  background: #cbd5e1;
+  background: var(--lavender);
+  color: #fff;
   cursor: not-allowed;
 }
 
 /* Status line */
 .status {
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-bottom: 12px;
+  padding: 9px 13px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
   font-size: 13px;
   font-weight: 600;
+  border: 1px solid transparent;
 }
 
 .status.info {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: rgba(41, 90, 255, 0.1);
+  border-color: rgba(41, 90, 255, 0.25);
+  color: var(--navy);
 }
 
 .status.success {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(0, 177, 64, 0.12);
+  border-color: rgba(0, 177, 64, 0.3);
+  color: #0a7a36;
 }
 
 .status.error {
-  background: #ffe4e6;
-  color: #9f1239;
+  background: rgba(230, 0, 0, 0.08);
+  border-color: rgba(230, 0, 0, 0.28);
+  color: #b50000;
 }
 
-/* Prominent output row */
+/* Prominent output row — a light lavender card from the palette, distinct
+   from both the bluish page background and the white team cells below. */
 .output {
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 16px;
+  background: #ece9fd;
+  border: 1px solid rgba(106, 21, 255, 0.18);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 6px 18px rgba(106, 21, 255, 0.12);
 }
 
 .output-head {
@@ -126,43 +176,50 @@ button.primary:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .toggle {
   display: inline-flex;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  background: rgba(106, 21, 255, 0.1);
+  border-radius: var(--radius-sm);
   padding: 3px;
   gap: 3px;
 }
 
 .toggle button {
   background: transparent;
-  color: var(--muted);
+  color: #6c69a0;
   padding: 6px 14px;
   border-radius: 6px;
   font-size: 13px;
 }
 
+.toggle button:hover {
+  color: var(--navy);
+}
+
 .toggle button.on {
-  background: var(--accent);
+  background: var(--royal);
   color: #fff;
 }
 
 button.copy {
-  background: var(--good);
-  color: #03251a;
+  background: var(--green-dark);
+  color: #fff;
+}
+
+button.copy:hover {
+  background: #063d2e;
 }
 
 .tsv {
   margin: 0;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-  color: var(--good);
+  background: var(--surface);
+  border: 1px solid rgba(106, 21, 255, 0.16);
+  border-radius: var(--radius-sm);
+  padding: 13px;
+  color: var(--navy);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 14px;
   white-space: pre;
@@ -171,7 +228,7 @@ button.copy {
 }
 
 .hint {
-  margin: 8px 0 0;
+  margin: 9px 0 0;
   color: var(--muted);
   font-size: 11px;
 }
@@ -179,51 +236,61 @@ button.copy {
 /* Team grid — tight and glanceable */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 8px;
 }
 
 .cell {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-left: 3px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.cell:hover {
+  border-color: var(--lavender);
+  box-shadow: 0 3px 10px rgba(32, 49, 128, 0.08);
 }
 
 .cell.unmatched {
-  border-left-color: var(--bad);
-  background: #fff1f2;
+  border-color: var(--red);
+  background: rgba(230, 0, 0, 0.05);
 }
 
 .cell-head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 5px;
+  gap: 7px;
+  margin-bottom: 8px;
 }
 
-.idx {
-  font-family: ui-monospace, monospace;
-  font-size: 10px;
-  font-weight: 700;
-  color: #94a3b8;
-  background: #f1f5f9;
-  border-radius: 3px;
-  padding: 1px 4px;
+.flag {
+  font-size: 19px;
+  line-height: 1;
 }
 
 .team {
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: 13px;
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.idx {
+  margin-left: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
 .nums {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   font-family: ui-monospace, monospace;
 }
 
@@ -232,24 +299,38 @@ button.copy {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 1px;
   font-size: 14px;
   font-weight: 700;
-  color: #334155;
-  background: #f8fafc;
-  border-radius: 4px;
-  padding: 2px 0;
+  color: var(--ink);
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 3px 0;
 }
 
 .num em {
   font-style: normal;
   font-size: 8.5px;
   font-weight: 700;
-  color: #94a3b8;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
 
+/* Goal-difference semantics, only when it's not the highlighted value */
+.num.gd.pos:not(.hot) {
+  color: var(--green);
+}
+
+.num.gd.neg:not(.hot) {
+  color: var(--red);
+}
+
+/* The value currently being exported in the row */
 .num.hot {
-  background: #eef2ff;
-  color: var(--accent);
-  outline: 1px solid #c7d2fe;
+  background: var(--royal);
+  color: #fff;
+}
+
+.num.hot em {
+  color: rgba(255, 255, 255, 0.8);
 }
