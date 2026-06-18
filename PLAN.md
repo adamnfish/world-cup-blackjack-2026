@@ -123,6 +123,32 @@ Do these together once you have the Worker URL from step A:
 - Help debug any workflow run, CORS error, or unmatched-team issue.
 - Tweak the UI/layout.
 
+## Future features (backlog)
+
+Nice-to-haves, not blockers for going live.
+
+- **Match count per team** — show how many matches each team has played in its
+  grid cell. The data already exists: `TeamStats.matchesPlayed` is computed in
+  `src/data.ts` (`aggregateGoals`) but isn't surfaced in the UI. Mostly a
+  presentation change (e.g. a small count badge in the cell). Decide whether it
+  should also be a selectable export column alongside GF / GD.
+
+- **Team status (knocked out / still in)** — visually mark each team's
+  tournament status (e.g. greyed-out / strikethrough when eliminated, an accent
+  when still in). Needs more than the goals aggregation:
+  - football-data.org matches carry a `stage` (`GROUP_STAGE`, `LAST_16`, …) and
+    `score.winner`; there is also a standings endpoint
+    (`/v4/competitions/WC/standings`).
+  - Knockout elimination is straightforward: a team that lost a knockout match
+    is out. Mind penalty-shootout winners — they're in `score.winner` /
+    `score.penalties`, not the fullTime/extraTime score we currently read.
+  - Group-stage elimination is harder: requires computing group tables and
+    remaining fixtures, or reading the standings endpoint. Decide how to treat
+    "mathematically eliminated but still has fixtures" vs simply "has no
+    remaining matches".
+  - Open question: which statuses to show — minimal (In / Eliminated) or richer
+    (Group stage / Through to KO / Eliminated / Champion)?
+
 ## Open questions / notes
 
 - `PROXY_URL` precedence: a value saved in the browser's localStorage overrides
