@@ -103,14 +103,12 @@ Do these together once you have the Worker URL from step A:
 
 - Run `npm run worker:deploy` after you've done `worker:login`.
 - Bump wrangler / dependency versions if desired (currently pinned to
-  wrangler `^3.114.0`, also referenced in `deploy-worker.yml`).
+  wrangler `^4.102.0`, also referenced in `deploy-worker.yml`).
 - Help debug any workflow run, CORS error, or unmatched-team issue.
 - Tweak the UI/layout.
 
 ## Open questions / notes
 
-- wrangler is pinned to v3; v4 exists. Left on v3 because that's what was
-  verified end-to-end. Can bump on request.
 - `PROXY_URL` precedence: a value saved in the browser's localStorage overrides
   the baked-in default, so changing `PROXY_URL` later only auto-applies to fresh
   browsers.
