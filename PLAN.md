@@ -6,21 +6,32 @@ have time for the Cloudflare steps.
 
 ## Where things stand
 
-- **App**: built and working. Vite + React + TS SPA. `npm run build` passes;
-  the data aggregation was verified against the live football-data.org feed (all
-  48 teams matched, correct GF/GA/GD row).
+**Done and pushed to `main`** (`git@github.com:adamnfish/world-cup-blackjack-2026.git`):
+
+- **App**: built and working. Vite + React + TS SPA. `npm run build` /
+  `npm run lint` pass; the data aggregation was verified against the live
+  football-data.org feed (all 48 teams matched, correct GF/GA/GD row).
+- **Design**: redesigned around the FIFA 2026 palette — unified colour system,
+  light lavender output card, flag emoji + muted index in the team cells,
+  full-width brand strip.
 - **Worker**: `worker/worker.js` is a ~30-line Cloudflare Worker CORS proxy.
   Verified end-to-end locally (forwards `X-Auth-Token`, adds CORS, returns 104
-  matches). Not yet deployed to Cloudflare.
+  matches). **Not yet deployed to Cloudflare** — this is the main remaining work.
 - **CI**: two workflows exist —
   - `.github/workflows/deploy.yml` — builds the SPA and deploys to GitHub Pages
     on push to `main`. Bakes in `VITE_PROXY_URL` from the `PROXY_URL` repo
     variable.
   - `.github/workflows/deploy-worker.yml` — deploys the Worker to Cloudflare
     when `worker/**` changes (needs Cloudflare secrets).
-- **Git**: committed to `main` and pushed to
-  `origin` (`git@github.com:adamnfish/world-cup-blackjack-2026.git`). The `old/`
-  prototype is gitignored and stays local-only.
+- **Dependencies / tooling**: all current — wrangler 4, vite 8, TypeScript 6,
+  @vitejs/plugin-react 6, CI on Node 22; GitHub Actions on latest majors
+  (checkout v7, setup-node v6, configure-pages v6, upload-pages-artifact v5,
+  deploy-pages v5, wrangler-action v4). `npm audit` is clean (0 vulnerabilities).
+- **Repo hygiene**: the `old/` prototype is gitignored and stays local-only.
+
+**Not done yet** (resume here — see "Remaining steps" below): deploy the Worker
+to Cloudflare, then enable GitHub Pages and set the `PROXY_URL` variable so the
+hosted site can reach the API.
 
 ## How the pieces connect
 
@@ -42,6 +53,11 @@ football-data.org API
 ---
 
 ## Remaining steps
+
+> **Start here.** The code, design, and tooling are all done and
+> pushed. What's left is purely the Cloudflare + GitHub account setup below,
+> in order: A → C → D (B is optional). You'll need a Cloudflare account and
+> your football-data.org API token to hand.
 
 ### A. Cloudflare — deploy the Worker (you, when you have time)
 
@@ -101,9 +117,9 @@ Do these together once you have the Worker URL from step A:
 
 ## What Claude can do on resume
 
-- Run `npm run worker:deploy` after you've done `worker:login`.
-- Bump wrangler / dependency versions if desired (currently pinned to
-  wrangler `^4.102.0`, also referenced in `deploy-worker.yml`).
+- Run `npm run worker:deploy` after you've done `worker:login` (step A).
+- After you set `PROXY_URL` / enable Pages, trigger and watch the Pages
+  workflow, then help verify the live site (step D).
 - Help debug any workflow run, CORS error, or unmatched-team issue.
 - Tweak the UI/layout.
 
