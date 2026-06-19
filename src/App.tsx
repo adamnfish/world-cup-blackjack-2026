@@ -3,6 +3,7 @@ import {
   aggregateGoals,
   SPREADSHEET_TEAMS,
   TEAM_FLAGS,
+  teamProgress,
   type TeamStats,
 } from "./data";
 
@@ -18,7 +19,60 @@ const emptyStats = (): TeamStats[] =>
     goalsFor: 0,
     goalsAgainst: 0,
     matchesPlayed: 0,
+    stageCode: null,
+    groupPlayed: 0,
+    eliminated: false,
+    rank: null,
   }));
+
+const MEDALS: Record<1 | 2 | 3, string> = { 1: "🏆", 2: "🥈", 3: "🥉" };
+const PODIUM_TITLE: Record<1 | 2 | 3, string> = {
+  1: "Champion",
+  2: "Runner-up",
+  3: "Third place",
+};
+const ROUND_NAME: Record<string, string> = {
+  R32: "Round of 32",
+  R16: "Round of 16",
+  QF: "Quarter-finals",
+  SF: "Semi-finals",
+  F: "Final",
+};
+
+/** The progress badge shown in the top-right of each team card. */
+function ProgressBadge({ team }: { team: TeamStats }) {
+  const p = teamProgress(team);
+  switch (p.kind) {
+    case "none":
+      return null;
+    case "group":
+      return (
+        <span
+          className={`badge group ${p.alive ? "" : "out"}`}
+          title={`Group stage — ${p.played} of 3 played${p.alive ? "" : " (eliminated)"}`}
+        >
+          G<span className="count-chip">{p.played}</span>
+        </span>
+      );
+    case "round": {
+      const name = ROUND_NAME[p.code] ?? p.code;
+      return (
+        <span
+          className={`badge ${p.alive ? "alive" : "out"}`}
+          title={p.alive ? name : `Eliminated — ${name}`}
+        >
+          {p.code}
+        </span>
+      );
+    }
+    case "podium":
+      return (
+        <span className={`badge podium rank${p.rank}`} title={PODIUM_TITLE[p.rank]}>
+          {MEDALS[p.rank]}
+        </span>
+      );
+  }
+}
 
 export function App() {
   const [apiToken, setApiToken] = useState(
@@ -173,7 +227,7 @@ export function App() {
       </section>
 
       <main className="grid">
-        {stats.map((t, i) => {
+        {stats.map((t) => {
           const gd = t.goalsFor - t.goalsAgainst;
           const sign = gd > 0 ? "pos" : gd < 0 ? "neg" : "";
           return (
@@ -185,10 +239,13 @@ export function App() {
                 <span className="flag" aria-hidden="true">
                   {TEAM_FLAGS[t.name] ?? ""}
                 </span>
-                <span className="team" title={t.apiName ?? "no API match"}>
+                <span
+                  className={`team ${t.eliminated ? "elim" : ""}`}
+                  title={t.apiName ?? "no API match"}
+                >
                   {t.name}
                 </span>
-                <span className="idx">{(i + 2).toString().padStart(2, "0")}</span>
+                <ProgressBadge team={t} />
               </div>
               <div className="nums">
                 <span className={`num ${mode === "gf" ? "hot" : ""}`}>
