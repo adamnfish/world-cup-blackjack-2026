@@ -111,6 +111,54 @@ export interface TeamStats {
   goalsFor: number;
   goalsAgainst: number;
   matchesPlayed: number;
+  /** Badge code for the furthest stage reached (GS/R32/R16/QF/SF/F), or null. */
+  stageCode: string | null;
+  /** Finished group-stage matches played (0–3), for the group count chip. */
+  groupPlayed: number;
+  /** Knocked out of the tournament (lost a KO match, or didn't escape the group). */
+  eliminated: boolean;
+  /** Final standing: 1 champion, 2 runner-up, 3 third place; null otherwise. */
+  rank: 1 | 2 | 3 | null;
+}
+
+/**
+ * football-data.org `stage` enum → { ordering, badge code }. Single source of
+ * truth for tournament progress; if the live 2026 feed uses a different string
+ * (e.g. for the Round of 32), fix it here and nowhere else.
+ *
+ * THIRD_PLACE shares SEMI_FINALS' order/code: reaching it means "semi-finalist"
+ * (the playoff is a consolation, not an advancement). FINAL shows "F" only while
+ * the match is pending — once played, both teams resolve to a medal (rank).
+ */
+const STAGE: Record<string, { order: number; code: string }> = {
+  GROUP_STAGE: { order: 0, code: "GS" },
+  LAST_32: { order: 1, code: "R32" },
+  LAST_16: { order: 2, code: "R16" },
+  QUARTER_FINALS: { order: 3, code: "QF" },
+  SEMI_FINALS: { order: 4, code: "SF" },
+  THIRD_PLACE: { order: 4, code: "SF" },
+  FINAL: { order: 5, code: "F" },
+};
+
+/** Stage info for a match, defaulting unknown/missing stages to group treatment. */
+function stageInfo(stage?: string): { order: number; code: string } {
+  return (stage && STAGE[stage]) || STAGE.GROUP_STAGE;
+}
+
+/** A team's tournament progress, shaped for rendering. */
+export type Progress =
+  | { kind: "none" }
+  | { kind: "group"; played: number; alive: boolean }
+  | { kind: "round"; code: string; alive: boolean }
+  | { kind: "podium"; rank: 1 | 2 | 3 };
+
+/** Derive the display-ready progress for a team. Pure — testable from check.mjs. */
+export function teamProgress(t: TeamStats): Progress {
+  if (t.rank) return { kind: "podium", rank: t.rank };
+  if (t.stageCode == null) return { kind: "none" };
+  if (t.stageCode === "GS")
+    return { kind: "group", played: t.groupPlayed, alive: !t.eliminated };
+  return { kind: "round", code: t.stageCode, alive: !t.eliminated };
 }
 
 /** Remove diacritics/accents from a string. */
@@ -181,10 +229,13 @@ function findBestTeamMatch(
 
 interface ApiMatch {
   status?: string;
+  stage?: string;
   score?: {
+    winner?: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
     fullTime?: { home: number | null; away: number | null };
     extraTime?: { home: number | null; away: number | null };
     regularTime?: { home: number | null; away: number | null };
+    penalties?: { home: number | null; away: number | null };
   };
   homeTeam?: { name?: string };
   awayTeam?: { name?: string };
@@ -214,6 +265,10 @@ export function aggregateGoals(matches: ApiMatch[]): TeamStats[] {
       goalsFor: 0,
       goalsAgainst: 0,
       matchesPlayed: 0,
+      stageCode: null,
+      groupPlayed: 0,
+      eliminated: false,
+      rank: null,
     };
   }
 
@@ -267,6 +322,74 @@ export function aggregateGoals(matches: ApiMatch[]): TeamStats[] {
       awayTeam.goalsFor += away;
       awayTeam.goalsAgainst += home;
       awayTeam.matchesPlayed += 1;
+    }
+  }
+
+  // ---- Tournament progress / status ----
+  // Highest stage order each team appears in (any status); -1 = no matches.
+  const highestOrder: Record<string, number> = {};
+  for (const team of SPREADSHEET_TEAMS) highestOrder[team] = -1;
+  let knockoutsBegun = false;
+
+  for (const m of matches) {
+    if (!m.homeTeam?.name || !m.awayTeam?.name) continue;
+    const homeTeam = teamByApiName(m.homeTeam.name);
+    const awayTeam = teamByApiName(m.awayTeam.name);
+    if (!homeTeam && !awayTeam) continue;
+
+    const { order, code } = stageInfo(m.stage);
+    const finished = m.status === "FINISHED";
+    if (order >= 1) knockoutsBegun = true;
+
+    // Record the furthest stage each team appears in.
+    for (const t of [homeTeam, awayTeam]) {
+      if (t && order > highestOrder[t.name]) {
+        highestOrder[t.name] = order;
+        t.stageCode = code;
+      }
+    }
+
+    // Count finished group matches for the count chip.
+    if (order === 0 && finished) {
+      if (homeTeam) homeTeam.groupPlayed += 1;
+      if (awayTeam) awayTeam.groupPlayed += 1;
+    }
+
+    if (order < 1 || !finished) continue;
+
+    // Knockout result. Trust score.winner; fall back to the shootout score
+    // (knockouts can't truly draw) so penalty winners are handled correctly.
+    let winnerSide = m.score?.winner ?? null;
+    const pens = m.score?.penalties;
+    if (
+      (winnerSide == null || winnerSide === "DRAW") &&
+      pens?.home != null &&
+      pens.away != null &&
+      pens.home !== pens.away
+    ) {
+      winnerSide = pens.home > pens.away ? "HOME_TEAM" : "AWAY_TEAM";
+    }
+    const winner =
+      winnerSide === "HOME_TEAM" ? homeTeam : winnerSide === "AWAY_TEAM" ? awayTeam : null;
+    const loser =
+      winnerSide === "HOME_TEAM" ? awayTeam : winnerSide === "AWAY_TEAM" ? homeTeam : null;
+
+    if (m.stage === "FINAL") {
+      if (winner) winner.rank = 1;
+      if (loser) loser.rank = 2;
+    } else if (m.stage === "THIRD_PLACE") {
+      if (winner) winner.rank = 3;
+      if (loser) loser.eliminated = true;
+    } else if (loser) {
+      loser.eliminated = true;
+    }
+  }
+
+  // Once the knockouts have a real fixture, any team that never reached one was
+  // eliminated in the group stage.
+  if (knockoutsBegun) {
+    for (const team of SPREADSHEET_TEAMS) {
+      if (highestOrder[team] <= 0) stats[team].eliminated = true;
     }
   }
 
