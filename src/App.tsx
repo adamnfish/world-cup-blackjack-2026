@@ -258,13 +258,13 @@ export function App() {
               className={mode === "gf" ? "on" : ""}
               onClick={() => setMode("gf")}
             >
-              Goals For
+              Goals
             </button>
             <button
               className={mode === "gd" ? "on" : ""}
               onClick={() => setMode("gd")}
             >
-              Goal Difference
+              GD
             </button>
             <button
               className={mode === "progress" ? "on" : ""}
