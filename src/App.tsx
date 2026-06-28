@@ -7,7 +7,14 @@ import {
   type TeamStats,
 } from "./data";
 
-type OutputMode = "gf" | "gd";
+type OutputMode = "gf" | "gd" | "progress" | "status";
+
+const ROW_LABEL: Record<OutputMode, string> = {
+  gf: "GF",
+  gd: "GD",
+  progress: "Progress",
+  status: "Status",
+};
 
 const LS_TOKEN = "wc26_api_token";
 const LS_PROXY = "wc26_proxy_url";
@@ -74,6 +81,26 @@ function ProgressBadge({ team }: { team: TeamStats }) {
   }
 }
 
+/** Spreadsheet text mirroring the progress badge. */
+function progressCell(t: TeamStats): string {
+  const p = teamProgress(t);
+  switch (p.kind) {
+    case "none":
+      return ""; // no matches played yet -> blank cell
+    case "group":
+      return `G${p.played}`; // e.g. G2
+    case "round":
+      return p.code; // R32 / R16 / QF / SF / F
+    case "podium":
+      return MEDALS[p.rank]; // 🏆 / 🥈 / 🥉
+  }
+}
+
+/** In/out marker for the status row. */
+function statusCell(t: TeamStats): string {
+  return t.eliminated ? "❌" : "⚽";
+}
+
 export function App() {
   const [apiToken, setApiToken] = useState(
     () => localStorage.getItem(LS_TOKEN) ?? ""
@@ -96,13 +123,20 @@ export function App() {
   useEffect(() => localStorage.setItem(LS_TOKEN, apiToken), [apiToken]);
   useEffect(() => localStorage.setItem(LS_PROXY, proxyUrl), [proxyUrl]);
 
-  const value = (t: TeamStats) =>
-    mode === "gd" ? t.goalsFor - t.goalsAgainst : t.goalsFor;
+  const value = (t: TeamStats): string => {
+    switch (mode) {
+      case "gd":
+        return (t.goalsFor - t.goalsAgainst).toString();
+      case "progress":
+        return progressCell(t);
+      case "status":
+        return statusCell(t);
+      default:
+        return t.goalsFor.toString(); // "gf"
+    }
+  };
 
-  const tsvRow = useMemo(
-    () => stats.map((t) => value(t).toString()).join("\t"),
-    [stats, mode]
-  );
+  const tsvRow = useMemo(() => stats.map(value).join("\t"), [stats, mode]);
 
   const loaded = stats.some((t) => t.matchesPlayed > 0);
 
@@ -213,9 +247,21 @@ export function App() {
             >
               Goal Difference
             </button>
+            <button
+              className={mode === "progress" ? "on" : ""}
+              onClick={() => setMode("progress")}
+            >
+              Progress
+            </button>
+            <button
+              className={mode === "status" ? "on" : ""}
+              onClick={() => setMode("status")}
+            >
+              Status
+            </button>
           </div>
           <button className="copy" onClick={copyRow}>
-            {copied ? "Copied!" : `Copy ${mode === "gf" ? "GF" : "GD"} row`}
+            {copied ? "Copied!" : `Copy ${ROW_LABEL[mode]} row`}
           </button>
         </div>
         <pre className="tsv" title="Click to select, then copy">
