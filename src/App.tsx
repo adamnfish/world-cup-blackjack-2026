@@ -7,14 +7,34 @@ import {
   type TeamStats,
 } from "./data";
 
-type OutputMode = "gf" | "gd" | "progress" | "status";
+/** A single data row. "all" stacks every RowMode into one paste. */
+type RowMode = "gf" | "gd" | "progress" | "status";
+type OutputMode = "all" | RowMode;
+
+/** Row order for the "all" export — matches the tab order. */
+const ALL_MODES: RowMode[] = ["gf", "gd", "progress", "status"];
 
 const ROW_LABEL: Record<OutputMode, string> = {
+  all: "All",
   gf: "GF",
   gd: "GD",
   progress: "Progress",
   status: "Status",
 };
+
+/** The spreadsheet cell value for one team in a given row mode. */
+function cellFor(t: TeamStats, mode: RowMode): string {
+  switch (mode) {
+    case "gd":
+      return (t.goalsFor - t.goalsAgainst).toString();
+    case "progress":
+      return progressCell(t);
+    case "status":
+      return statusCell(t);
+    case "gf":
+      return t.goalsFor.toString();
+  }
+}
 
 const LS_TOKEN = "wc26_api_token";
 const LS_PROXY = "wc26_proxy_url";
@@ -112,7 +132,7 @@ export function App() {
       ""
   );
   const [stats, setStats] = useState<TeamStats[]>(emptyStats);
-  const [mode, setMode] = useState<OutputMode>("gf");
+  const [mode, setMode] = useState<OutputMode>("all");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{
     kind: "info" | "error" | "success";
@@ -123,20 +143,12 @@ export function App() {
   useEffect(() => localStorage.setItem(LS_TOKEN, apiToken), [apiToken]);
   useEffect(() => localStorage.setItem(LS_PROXY, proxyUrl), [proxyUrl]);
 
-  const value = (t: TeamStats): string => {
-    switch (mode) {
-      case "gd":
-        return (t.goalsFor - t.goalsAgainst).toString();
-      case "progress":
-        return progressCell(t);
-      case "status":
-        return statusCell(t);
-      default:
-        return t.goalsFor.toString(); // "gf"
-    }
-  };
-
-  const tsvRow = useMemo(() => stats.map(value).join("\t"), [stats, mode]);
+  const tsvRow = useMemo(() => {
+    const modes = mode === "all" ? ALL_MODES : [mode];
+    return modes
+      .map((m) => stats.map((t) => cellFor(t, m)).join("\t"))
+      .join("\n");
+  }, [stats, mode]);
 
   const loaded = stats.some((t) => t.matchesPlayed > 0);
 
@@ -236,6 +248,12 @@ export function App() {
         <div className="output-head">
           <div className="toggle">
             <button
+              className={mode === "all" ? "on" : ""}
+              onClick={() => setMode("all")}
+            >
+              All
+            </button>
+            <button
               className={mode === "gf" ? "on" : ""}
               onClick={() => setMode("gf")}
             >
@@ -261,14 +279,18 @@ export function App() {
             </button>
           </div>
           <button className="copy" onClick={copyRow}>
-            {copied ? "Copied!" : `Copy ${ROW_LABEL[mode]} row`}
+            {copied
+              ? "Copied!"
+              : `Copy ${ROW_LABEL[mode]} row${mode === "all" ? "s" : ""}`}
           </button>
         </div>
         <pre className="tsv" title="Click to select, then copy">
           {tsvRow}
         </pre>
         <p className="hint">
-          Tab-separated, 48 values in spreadsheet order. Paste straight into the row.
+          {mode === "all"
+            ? "Tab-separated, 4 rows (GF, GD, Progress, Status) × 48 values in spreadsheet order. Paste straight into the block."
+            : "Tab-separated, 48 values in spreadsheet order. Paste straight into the row."}
         </p>
       </section>
 
