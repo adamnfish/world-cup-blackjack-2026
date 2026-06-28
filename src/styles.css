@@ -258,6 +258,24 @@ button.copy:hover {
   background: rgba(230, 0, 0, 0.05);
 }
 
+/* Eliminated teams: washed out and desaturated so the survivors stand out. */
+.cell.eliminated {
+  background: rgba(118, 124, 166, 0.1);
+  border-color: transparent;
+  filter: grayscale(0.85);
+  opacity: 0.55;
+}
+
+.cell.eliminated:hover {
+  opacity: 0.8;
+}
+
+.cell.eliminated .team {
+  text-decoration: line-through;
+  text-decoration-color: var(--red);
+  text-decoration-thickness: 2px;
+}
+
 .cell-head {
   display: flex;
   align-items: center;

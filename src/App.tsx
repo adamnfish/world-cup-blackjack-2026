@@ -143,14 +143,15 @@ export function App() {
   useEffect(() => localStorage.setItem(LS_TOKEN, apiToken), [apiToken]);
   useEffect(() => localStorage.setItem(LS_PROXY, proxyUrl), [proxyUrl]);
 
+  const loaded = stats.some((t) => t.matchesPlayed > 0);
+
   const tsvRow = useMemo(() => {
     const modes = mode === "all" ? ALL_MODES : [mode];
+    // Before any data loads, show empty rows rather than placeholder zeros.
     return modes
-      .map((m) => stats.map((t) => cellFor(t, m)).join("\t"))
+      .map((m) => stats.map((t) => (loaded ? cellFor(t, m) : "")).join("\t"))
       .join("\n");
-  }, [stats, mode]);
-
-  const loaded = stats.some((t) => t.matchesPlayed > 0);
+  }, [stats, mode, loaded]);
 
   async function loadStats() {
     if (!apiToken.trim()) {
@@ -301,7 +302,9 @@ export function App() {
           return (
             <div
               key={t.name}
-              className={`cell ${!t.apiName && loaded ? "unmatched" : ""}`}
+              className={`cell ${!t.apiName && loaded ? "unmatched" : ""} ${
+                t.eliminated ? "eliminated" : ""
+              }`}
             >
               <div className="cell-head">
                 <span className="flag" aria-hidden="true">
