@@ -7,7 +7,34 @@ import {
   type TeamStats,
 } from "./data";
 
-type OutputMode = "gf" | "gd";
+/** A single data row. "all" stacks every RowMode into one paste. */
+type RowMode = "gf" | "gd" | "progress" | "status";
+type OutputMode = "all" | RowMode;
+
+/** Row order for the "all" export — matches the tab order. */
+const ALL_MODES: RowMode[] = ["gf", "gd", "progress", "status"];
+
+const ROW_LABEL: Record<OutputMode, string> = {
+  all: "All",
+  gf: "GF",
+  gd: "GD",
+  progress: "Progress",
+  status: "Status",
+};
+
+/** The spreadsheet cell value for one team in a given row mode. */
+function cellFor(t: TeamStats, mode: RowMode): string {
+  switch (mode) {
+    case "gd":
+      return (t.goalsFor - t.goalsAgainst).toString();
+    case "progress":
+      return progressCell(t);
+    case "status":
+      return statusCell(t);
+    case "gf":
+      return t.goalsFor.toString();
+  }
+}
 
 const LS_TOKEN = "wc26_api_token";
 const LS_PROXY = "wc26_proxy_url";
@@ -74,6 +101,26 @@ function ProgressBadge({ team }: { team: TeamStats }) {
   }
 }
 
+/** Spreadsheet text mirroring the progress badge. */
+function progressCell(t: TeamStats): string {
+  const p = teamProgress(t);
+  switch (p.kind) {
+    case "none":
+      return ""; // no matches played yet -> blank cell
+    case "group":
+      return `G${p.played}`; // e.g. G2
+    case "round":
+      return p.code; // R32 / R16 / QF / SF / F
+    case "podium":
+      return MEDALS[p.rank]; // 🏆 / 🥈 / 🥉
+  }
+}
+
+/** In/out marker for the status row. */
+function statusCell(t: TeamStats): string {
+  return t.eliminated ? "❌" : "⚽";
+}
+
 export function App() {
   const [apiToken, setApiToken] = useState(
     () => localStorage.getItem(LS_TOKEN) ?? ""
@@ -85,7 +132,7 @@ export function App() {
       ""
   );
   const [stats, setStats] = useState<TeamStats[]>(emptyStats);
-  const [mode, setMode] = useState<OutputMode>("gf");
+  const [mode, setMode] = useState<OutputMode>("all");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{
     kind: "info" | "error" | "success";
@@ -96,15 +143,15 @@ export function App() {
   useEffect(() => localStorage.setItem(LS_TOKEN, apiToken), [apiToken]);
   useEffect(() => localStorage.setItem(LS_PROXY, proxyUrl), [proxyUrl]);
 
-  const value = (t: TeamStats) =>
-    mode === "gd" ? t.goalsFor - t.goalsAgainst : t.goalsFor;
-
-  const tsvRow = useMemo(
-    () => stats.map((t) => value(t).toString()).join("\t"),
-    [stats, mode]
-  );
-
   const loaded = stats.some((t) => t.matchesPlayed > 0);
+
+  const tsvRow = useMemo(() => {
+    const modes = mode === "all" ? ALL_MODES : [mode];
+    // Before any data loads, show empty rows rather than placeholder zeros.
+    return modes
+      .map((m) => stats.map((t) => (loaded ? cellFor(t, m) : "")).join("\t"))
+      .join("\n");
+  }, [stats, mode, loaded]);
 
   async function loadStats() {
     if (!apiToken.trim()) {
@@ -202,27 +249,49 @@ export function App() {
         <div className="output-head">
           <div className="toggle">
             <button
+              className={mode === "all" ? "on" : ""}
+              onClick={() => setMode("all")}
+            >
+              All
+            </button>
+            <button
               className={mode === "gf" ? "on" : ""}
               onClick={() => setMode("gf")}
             >
-              Goals For
+              Goals
             </button>
             <button
               className={mode === "gd" ? "on" : ""}
               onClick={() => setMode("gd")}
             >
-              Goal Difference
+              GD
+            </button>
+            <button
+              className={mode === "progress" ? "on" : ""}
+              onClick={() => setMode("progress")}
+            >
+              Progress
+            </button>
+            <button
+              className={mode === "status" ? "on" : ""}
+              onClick={() => setMode("status")}
+            >
+              Status
             </button>
           </div>
           <button className="copy" onClick={copyRow}>
-            {copied ? "Copied!" : `Copy ${mode === "gf" ? "GF" : "GD"} row`}
+            {copied
+              ? "Copied!"
+              : `Copy ${ROW_LABEL[mode]} row${mode === "all" ? "s" : ""}`}
           </button>
         </div>
         <pre className="tsv" title="Click to select, then copy">
           {tsvRow}
         </pre>
         <p className="hint">
-          Tab-separated, 48 values in spreadsheet order. Paste straight into the row.
+          {mode === "all"
+            ? "Tab-separated, 4 rows (GF, GD, Progress, Status) × 48 values in spreadsheet order. Paste straight into the block."
+            : "Tab-separated, 48 values in spreadsheet order. Paste straight into the row."}
         </p>
       </section>
 
@@ -233,7 +302,9 @@ export function App() {
           return (
             <div
               key={t.name}
-              className={`cell ${!t.apiName && loaded ? "unmatched" : ""}`}
+              className={`cell ${!t.apiName && loaded ? "unmatched" : ""} ${
+                t.eliminated ? "eliminated" : ""
+              }`}
             >
               <div className="cell-head">
                 <span className="flag" aria-hidden="true">

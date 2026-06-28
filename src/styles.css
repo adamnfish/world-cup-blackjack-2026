@@ -175,6 +175,7 @@ button.primary:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -256,6 +257,24 @@ button.copy:hover {
 .cell.unmatched {
   border-color: var(--red);
   background: rgba(230, 0, 0, 0.05);
+}
+
+/* Eliminated teams: washed out and desaturated so the survivors stand out. */
+.cell.eliminated {
+  background: rgba(118, 124, 166, 0.1);
+  border-color: transparent;
+  filter: grayscale(0.85);
+  opacity: 0.55;
+}
+
+.cell.eliminated:hover {
+  opacity: 0.8;
+}
+
+.cell.eliminated .team {
+  text-decoration: line-through;
+  text-decoration-color: var(--red);
+  text-decoration-thickness: 2px;
 }
 
 .cell-head {
@@ -396,4 +415,26 @@ button.copy:hover {
 
 .num.hot em {
   color: rgba(255, 255, 255, 0.8);
+}
+
+/* Phones: shrink the tabs so all five fit, and let the Copy button take its own
+   full-width row when it wraps below them. */
+@media (max-width: 480px) {
+  .output-head {
+    gap: 8px;
+  }
+
+  .toggle {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .toggle button {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  button.copy {
+    flex: 1 1 100%;
+  }
 }
