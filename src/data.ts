@@ -302,6 +302,8 @@ export function aggregateGoals(matches: ApiMatch[]): TeamStats[] {
     // how far the match progressed.
     const home = (score.regularTime?.home ?? 0) + (score.extraTime?.home ?? 0);
     const away = (score.regularTime?.away ?? 0) + (score.extraTime?.away ?? 0);
+    // Skip matches with no score data at all (scheduled/postponed). A genuine
+    // 0-0 draw will have regularTime.home === 0, so it won't be skipped.
     if (home === 0 && away === 0 && score.regularTime?.home == null) continue;
 
     const homeTeam = teamByApiName(m.homeTeam.name);
