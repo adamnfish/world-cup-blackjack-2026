@@ -295,29 +295,14 @@ export function aggregateGoals(matches: ApiMatch[]): TeamStats[] {
       score.extraTime?.home != null;
     if (!played) continue;
 
-    // Compute goals excluding penalty shootouts. The API's fullTime field may
-    // include shootout goals for matches decided on penalties, so we cannot
-    // rely on it alone. When a penalties object is present, derive the in-play
-    // score from regularTime + extraTime (both are deltas for their period).
-    // For matches without penalties, fullTime is the correct cumulative score.
-    let home: number | null = null;
-    let away: number | null = null;
-    if (score.penalties?.home != null && score.regularTime?.home != null) {
-      // Match went to penalties — sum regular + extra time goals only.
-      const rtHome = score.regularTime.home ?? 0;
-      const rtAway = score.regularTime.away ?? 0;
-      const etHome = score.extraTime?.home ?? 0;
-      const etAway = score.extraTime?.away ?? 0;
-      home = rtHome + etHome;
-      away = rtAway + etAway;
-    } else if (score.fullTime?.home != null) {
-      home = score.fullTime.home;
-      away = score.fullTime.away;
-    } else if (score.regularTime?.home != null) {
-      home = score.regularTime.home;
-      away = score.regularTime.away;
-    }
-    if (home == null || away == null) continue;
+    // Sum regularTime + extraTime to get in-play goals, deliberately excluding
+    // penalty shootout goals. Both fields are period-specific deltas: regularTime
+    // covers the 90 minutes and extraTime covers the additional 30 minutes.
+    // Missing fields fall back to 0, giving a consistent result regardless of
+    // how far the match progressed.
+    const home = (score.regularTime?.home ?? 0) + (score.extraTime?.home ?? 0);
+    const away = (score.regularTime?.away ?? 0) + (score.extraTime?.away ?? 0);
+    if (home === 0 && away === 0 && score.regularTime?.home == null) continue;
 
     const homeTeam = teamByApiName(m.homeTeam.name);
     const awayTeam = teamByApiName(m.awayTeam.name);
