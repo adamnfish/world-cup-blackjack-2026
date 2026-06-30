@@ -295,16 +295,24 @@ export function aggregateGoals(matches: ApiMatch[]): TeamStats[] {
       score.extraTime?.home != null;
     if (!played) continue;
 
-    // Sum regularTime + extraTime to get in-play goals, deliberately excluding
-    // penalty shootout goals. Both fields are period-specific deltas: regularTime
-    // covers the 90 minutes and extraTime covers the additional 30 minutes.
-    // Missing fields fall back to 0, giving a consistent result regardless of
-    // how far the match progressed.
-    const home = (score.regularTime?.home ?? 0) + (score.extraTime?.home ?? 0);
-    const away = (score.regularTime?.away ?? 0) + (score.extraTime?.away ?? 0);
-    // Skip matches with no score data at all (scheduled/postponed). A genuine
-    // 0-0 draw will have regularTime.home === 0, so it won't be skipped.
-    if (home === 0 && away === 0 && score.regularTime?.home == null) continue;
+    // For matches that go to extra time, the API provides regularTime and
+    // extraTime as period-specific deltas. For matches that end in regular time,
+    // only fullTime is available. We use regularTime + extraTime when available
+    // (to exclude penalty shootout goals), otherwise fall back to fullTime.
+    let home: number;
+    let away: number;
+    if (score.regularTime?.home != null) {
+      // Extra-time match: sum the two periods (excludes penalties).
+      home = (score.regularTime.home ?? 0) + (score.extraTime?.home ?? 0);
+      away = (score.regularTime.away ?? 0) + (score.extraTime?.away ?? 0);
+    } else if (score.fullTime?.home != null) {
+      // Regular-duration match: fullTime is the final score.
+      home = score.fullTime.home;
+      away = score.fullTime.away ?? 0;
+    } else {
+      // No score data at all (scheduled/postponed) — skip.
+      continue;
+    }
 
     const homeTeam = teamByApiName(m.homeTeam.name);
     const awayTeam = teamByApiName(m.awayTeam.name);
