@@ -295,13 +295,14 @@ export function aggregateGoals(matches: ApiMatch[]): TeamStats[] {
       score.extraTime?.home != null;
     if (!played) continue;
 
-    // Prefer extra time, then full time, then regular time.
+    // Use fullTime (the cumulative score including extra time but excluding
+    // penalty shootouts). The extraTime object only contains goals scored
+    // *during* extra time (the delta), so it must not be used alone.
+    // Fall back to regularTime for in-progress matches where fullTime may not
+    // yet be populated.
     let home: number | null = null;
     let away: number | null = null;
-    if (score.extraTime?.home != null) {
-      home = score.extraTime.home;
-      away = score.extraTime.away;
-    } else if (score.fullTime?.home != null) {
+    if (score.fullTime?.home != null) {
       home = score.fullTime.home;
       away = score.fullTime.away;
     } else if (score.regularTime?.home != null) {
