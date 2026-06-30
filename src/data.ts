@@ -295,14 +295,22 @@ export function aggregateGoals(matches: ApiMatch[]): TeamStats[] {
       score.extraTime?.home != null;
     if (!played) continue;
 
-    // Use fullTime (the cumulative score including extra time but excluding
-    // penalty shootouts). The extraTime object only contains goals scored
-    // *during* extra time (the delta), so it must not be used alone.
-    // Fall back to regularTime for in-progress matches where fullTime may not
-    // yet be populated.
+    // Compute goals excluding penalty shootouts. The API's fullTime field may
+    // include shootout goals for matches decided on penalties, so we cannot
+    // rely on it alone. When a penalties object is present, derive the in-play
+    // score from regularTime + extraTime (both are deltas for their period).
+    // For matches without penalties, fullTime is the correct cumulative score.
     let home: number | null = null;
     let away: number | null = null;
-    if (score.fullTime?.home != null) {
+    if (score.penalties?.home != null && score.regularTime?.home != null) {
+      // Match went to penalties — sum regular + extra time goals only.
+      const rtHome = score.regularTime.home ?? 0;
+      const rtAway = score.regularTime.away ?? 0;
+      const etHome = score.extraTime?.home ?? 0;
+      const etAway = score.extraTime?.away ?? 0;
+      home = rtHome + etHome;
+      away = rtAway + etAway;
+    } else if (score.fullTime?.home != null) {
       home = score.fullTime.home;
       away = score.fullTime.away;
     } else if (score.regularTime?.home != null) {
