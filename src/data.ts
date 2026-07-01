@@ -295,20 +295,24 @@ export function aggregateGoals(matches: ApiMatch[]): TeamStats[] {
       score.extraTime?.home != null;
     if (!played) continue;
 
-    // Prefer extra time, then full time, then regular time.
-    let home: number | null = null;
-    let away: number | null = null;
-    if (score.extraTime?.home != null) {
-      home = score.extraTime.home;
-      away = score.extraTime.away;
+    // For matches that go to extra time, the API provides regularTime and
+    // extraTime as period-specific deltas. For matches that end in regular time,
+    // only fullTime is available. We use regularTime + extraTime when available
+    // (to exclude penalty shootout goals), otherwise fall back to fullTime.
+    let home: number;
+    let away: number;
+    if (score.regularTime?.home != null) {
+      // Extra-time match: sum the two periods (excludes penalties).
+      home = (score.regularTime.home ?? 0) + (score.extraTime?.home ?? 0);
+      away = (score.regularTime.away ?? 0) + (score.extraTime?.away ?? 0);
     } else if (score.fullTime?.home != null) {
+      // Regular-duration match: fullTime is the final score.
       home = score.fullTime.home;
-      away = score.fullTime.away;
-    } else if (score.regularTime?.home != null) {
-      home = score.regularTime.home;
-      away = score.regularTime.away;
+      away = score.fullTime.away ?? 0;
+    } else {
+      // No score data at all (scheduled/postponed) — skip.
+      continue;
     }
-    if (home == null || away == null) continue;
 
     const homeTeam = teamByApiName(m.homeTeam.name);
     const awayTeam = teamByApiName(m.awayTeam.name);
